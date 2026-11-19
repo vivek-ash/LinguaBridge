@@ -1,0 +1,83 @@
+# Training Configuration for NLLB-200 LoRA Fine-tuning
+
+model:
+  name: facebook/nllb-200-distilled-600M
+  max_length: 256
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - v_proj
+    - k_proj
+    - o_proj
+    - fc1
+    - fc2
+  bias: none
+  task_type: SEQ_2_SEQ_LM
+
+training:
+  output_dir: ./output/lora_adapter
+  num_train_epochs: 3
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 16
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-4
+  weight_decay: 0.01
+  warmup_steps: 500
+  lr_scheduler_type: cosine
+  logging_steps: 50
+  eval_steps: 500
+  save_steps: 500
+  save_total_limit: 3
+  fp16: true  # Set false for CPU
+  bf16: false
+  dataloader_num_workers: 4
+  evaluation_strategy: steps
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+  report_to:
+    - wandb
+    - mlflow
+
+data:
+  datasets:
+    - name: flores200
+      split: dev  # devtest for evaluation
+    - name: samanantar
+      max_samples: 100000  # Subsample for tractable training
+  language_pairs:
+    - src: eng_Latn
+      tgt: hin_Deva
+    - src: hin_Deva
+      tgt: eng_Latn
+    - src: eng_Latn
+      tgt: pan_Guru
+    - src: pan_Guru
+      tgt: eng_Latn
+    - src: eng_Latn
+      tgt: tam_Taml
+    - src: tam_Taml
+      tgt: eng_Latn
+    - src: eng_Latn
+      tgt: tel_Telu
+    - src: tel_Telu
+      tgt: eng_Latn
+    - src: eng_Latn
+      tgt: ben_Beng
+    - src: ben_Beng
+      tgt: eng_Latn
+  validation_split: 0.05
+
+evaluation:
+  metrics:
+    - bleu
+    - chrf
+    - meteor
+  test_dataset: flores200
+  test_split: devtest
+  num_beams: 5
+  max_new_tokens: 256

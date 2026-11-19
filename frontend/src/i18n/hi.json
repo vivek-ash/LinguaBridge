@@ -1,0 +1,72 @@
+{
+  "appName": "लिंगुआब्रिज",
+  "tagline": "हर भाषा की बाधा तोड़ें",
+  "subtitle": "AI साइन लैंग्वेज के साथ 50+ भाषाओं में रियल-टाइम अनुवाद",
+  "nav": {
+    "home": "होम",
+    "translate": "अनुवाद",
+    "video": "वीडियो स्टूडियो",
+    "history": "इतिहास",
+    "modelLab": "मॉडल लैब",
+    "dashboard": "डैशबोर्ड",
+    "settings": "सेटिंग्स"
+  },
+  "translator": {
+    "textTab": "टेक्स्ट",
+    "voiceTab": "आवाज़",
+    "conversationTab": "बातचीत",
+    "documentsTab": "दस्तावेज़",
+    "sourcePlaceholder": "यहाँ टेक्स्ट टाइप या पेस्ट करें...",
+    "targetPlaceholder": "अनुवाद यहाँ दिखाई देगा...",
+    "autoDetect": "स्वतः पहचान",
+    "detected": "पहचान की गई",
+    "confidence": "विश्वास",
+    "swap": "भाषाएँ बदलें",
+    "copy": "कॉपी",
+    "copied": "कॉपी हो गया!",
+    "listen": "सुनें",
+    "clear": "साफ़ करें",
+    "translate": "अनुवाद करें",
+    "translating": "अनुवाद हो रहा है...",
+    "characters": "अक्षर",
+    "alternatives": "विकल्प"
+  },
+  "voice": {
+    "pushToTalk": "बोलने के लिए दबाएँ",
+    "continuous": "लगातार",
+    "startRecording": "रिकॉर्डिंग शुरू करें",
+    "recording": "रिकॉर्डिंग हो रही है..."
+  },
+  "video": {
+    "upload": "वीडियो अपलोड करें",
+    "dragDrop": "वीडियो फ़ाइल यहाँ खींचें और छोड़ें",
+    "signDisclaimer": "AI-जनित सांकेतिक भाषा व्याख्या — प्रमाणित अनुवाद नहीं"
+  },
+  "history": {
+    "title": "अनुवाद इतिहास",
+    "noHistory": "अभी तक कोई अनुवाद नहीं",
+    "noHistoryDesc": "अनुवाद शुरू करने पर यहाँ दिखाई देंगे"
+  },
+  "dashboard": {
+    "title": "विश्लेषण डैशबोर्ड",
+    "totalTranslations": "कुल अनुवाद",
+    "totalCharacters": "अनुवादित अक्षर",
+    "avgLatency": "औसत विलंब",
+    "languagesUsed": "उपयोग की गई भाषाएँ"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "appearance": "दिखावट",
+    "theme": "थीम",
+    "dark": "डार्क",
+    "light": "लाइट"
+  },
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "कुछ गलत हो गया",
+    "retry": "पुनः प्रयास",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "search": "खोजें..."
+  }
+}
