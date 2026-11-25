@@ -95,6 +95,10 @@ class ModelManager:
 
     def load_nllb(self) -> None:
         """Load the NLLB-200 model + tokenizer (with optional LoRA). Thread-safe and fast offline-first."""
+        from app.config import settings
+        if not settings.PRELOAD_MODELS:
+            logger.info("Cloud-light mode active (PRELOAD_MODELS=false): skipping NLLB load to stay under memory limits.")
+            return
         if self._nllb_loaded:
             return
         with self._lock:
@@ -180,6 +184,10 @@ class ModelManager:
 
     def load_whisper(self) -> None:
         """Load the faster-whisper model."""
+        from app.config import settings
+        if not settings.PRELOAD_MODELS:
+            logger.info("Cloud-light mode active (PRELOAD_MODELS=false): skipping Whisper load to stay under memory limits.")
+            return
         if self._whisper_loaded:
             return
         with self._lock:

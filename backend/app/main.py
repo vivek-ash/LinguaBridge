@@ -43,12 +43,14 @@ async def lifespan(application: FastAPI):
         lora_path=settings.LORA_ADAPTER_PATH,
     )
 
-    # Preload and warm up all models on startup so first requests NEVER hit fallback
-    logger.info("⚡ Pre-loading and warming up ML models for instant translation …")
-    import asyncio
-    await asyncio.to_thread(model_manager.preload_all)
-
-    logger.info("🚀 LinguaBridge is ready! All models loaded and warmed up in memory.")
+    # Preload and warm up all models on startup if configured (local workstation mode)
+    if settings.PRELOAD_MODELS:
+        logger.info("⚡ Pre-loading and warming up ML models for instant translation …")
+        import asyncio
+        await asyncio.to_thread(model_manager.preload_all)
+        logger.info("🚀 LinguaBridge is ready! All models loaded and warmed up in memory.")
+    else:
+        logger.info("ℹ️ PRELOAD_MODELS is False – running in cloud-light mode.")
     yield
 
     # Shutdown

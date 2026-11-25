@@ -20,7 +20,7 @@ services:
       - key: WHISPER_MODEL
         value: "base"
       - key: PRELOAD_MODELS
-        value: "true"
+        value: "false"
       - key: DATABASE_URL
         value: "sqlite+aiosqlite:///./linguabridge.db"
       - key: UPLOAD_DIR
