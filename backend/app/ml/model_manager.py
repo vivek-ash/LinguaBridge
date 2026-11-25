@@ -184,12 +184,7 @@ class ModelManager:
     # ── Whisper (faster-whisper) ─────────────────────────────────────────
 
     def load_whisper(self) -> None:
-        """Load the faster-whisper model."""
-        from app.config import settings
-        import os
-        if not settings.PRELOAD_MODELS or os.environ.get("RENDER") or os.environ.get("PORT"):
-            logger.info("Cloud-light mode active: skipping Whisper load to stay under memory limits.")
-            return
+        """Load the faster-whisper model lazily."""
         if self._whisper_loaded:
             return
         with self._lock:
@@ -205,27 +200,41 @@ class ModelManager:
 
                 from faster_whisper import WhisperModel
 
-                compute_type = "float16" if self._device == "cuda" else "int8"
-                logger.info(
-                    "Loading Whisper model: size=%s, device=%s, compute=%s …",
-                    self._whisper_model_size, self._device, compute_type,
-                )
-                # Prefer highest-accuracy local model available: medium -> small -> base
-                candidates = [
-                    _MODEL_DIR / "models--Systran--faster-whisper-medium",
-                    _MODEL_DIR / "models--Systran--faster-whisper-small",
-                    _MODEL_DIR / "models--Systran--faster-whisper-base",
-                ]
-                model_source = self._whisper_model_size
+                is_cloud = bool(os.environ.get("RENDER") or os.environ.get("PORT"))
+                # On cloud, use tiny/base with int8 to guarantee RAM stays < 150MB total (well within 512MB free tier)
+                if is_cloud:
+                    compute_type = "int8"
+                    device = "cpu"
+                    candidates = [
+                        _MODEL_DIR / "models--Systran--faster-whisper-tiny",
+                        _MODEL_DIR / "models--Systran--faster-whisper-base",
+                    ]
+                    model_source = "tiny"
+                else:
+                    compute_type = "float16" if self._device == "cuda" else "int8"
+                    device = self._device
+                    candidates = [
+                        _MODEL_DIR / "models--Systran--faster-whisper-medium",
+                        _MODEL_DIR / "models--Systran--faster-whisper-small",
+                        _MODEL_DIR / "models--Systran--faster-whisper-base",
+                        _MODEL_DIR / "models--Systran--faster-whisper-tiny",
+                    ]
+                    model_source = self._whisper_model_size
+
                 for cand in candidates:
                     if cand.exists() and (cand / "model.bin").exists():
                         model_source = str(cand)
-                        logger.info("Found local high-accuracy Whisper model at: %s", cand.name)
+                        logger.info("Found local Whisper model at: %s", cand.name)
                         break
+
+                logger.info(
+                    "Loading Whisper model: source=%s, device=%s, compute=%s (is_cloud=%s) …",
+                    model_source, device, compute_type, is_cloud,
+                )
 
                 self._whisper_model = WhisperModel(
                     model_source,
-                    device=self._device,
+                    device=device,
                     compute_type=compute_type,
                     download_root=str(_MODEL_DIR),
                 )
@@ -233,7 +242,7 @@ class ModelManager:
                 logger.info("Whisper model loaded successfully.")
 
             except Exception as exc:
-                logger.warning("Whisper model failed to load – speech features unavailable. Error: %s", exc)
+                logger.warning("Whisper model failed to load – speech features unavailable. Error: %s", exc, exc_info=True)
                 self._whisper_loaded = False
 
     def get_whisper(self) -> Any:

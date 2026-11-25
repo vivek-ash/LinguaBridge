@@ -53,15 +53,7 @@ def process_caption_pipeline(
 
         whisper = model_manager.get_whisper()
         if whisper is None:
-            logger.warning("Whisper model unavailable; returning empty result.")
-            return {
-                "segments": [],
-                "duration": 0,
-                "source_lang": source_lang,
-                "target_lang": target_lang,
-                "detected_lang": "en",
-                "total_segments": 0,
-            }
+            raise RuntimeError("Speech transcription model (Whisper) could not be loaded. Please ensure memory limits allow loading the model.")
 
         update("transcribing", 25)
 
@@ -109,6 +101,20 @@ def process_caption_pipeline(
         duration = round(float(info.duration), 2) if hasattr(info, "duration") else 0.0
 
         raw_whisper_segments = list(segments_iter)
+        if not raw_whisper_segments:
+            logger.info("VAD filter yielded 0 segments. Retrying Whisper transcription without VAD filter...")
+            try:
+                retry_iter, _ = whisper.transcribe(
+                    audio_path,
+                    language=lang_param,
+                    task=task_to_run,
+                    word_timestamps=False,
+                    beam_size=1,
+                    vad_filter=False,
+                )
+                raw_whisper_segments = list(retry_iter)
+            except Exception as vad_err:
+                logger.warning("Transcription retry without VAD failed: %s", vad_err)
         update("transcribing", 65)
 
         # ── Step 2: Build segments and translate to target language ───────────
