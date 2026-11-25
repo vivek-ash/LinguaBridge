@@ -598,9 +598,10 @@ def _translate_single(
     model, tokenizer = model_manager.get_nllb()
 
     if model is None or tokenizer is None:
-        logger.info("NLLB model unavailable – using demo fallback for translation.")
-        fallback_res = _fallback_translate(text, source_lang, target_lang)
+        logger.info("NLLB model unavailable – using cloud translation bridge.")
+        fallback_res = _fallback_translate(text, source_lang, target_lang, tone=tone)
         fallback_res["detected_tone"] = detected_tone
+        _TRANSLATION_CACHE[cache_key] = fallback_res
         return fallback_res
 
     try:
@@ -691,11 +692,150 @@ def translate_batch(
     return [translate_text(text, source_lang, target_lang) for text in texts]
 
 
-def _fallback_translate(text: str, source_lang: str, target_lang: str) -> dict:
+_MYMEMORY_LANG_MAP: dict[str, str] = {
+    "en": "en-US",
+    "hi": "hi-IN",
+    "pa": "pa-IN",
+    "bn": "bn-IN",
+    "ta": "ta-IN",
+    "te": "te-IN",
+    "mr": "mr-IN",
+    "gu": "gu-IN",
+    "ur": "ur-PK",
+    "es": "es-ES",
+    "fr": "fr-FR",
+    "de": "de-DE",
+    "it": "it-IT",
+    "pt": "pt-PT",
+    "ru": "ru-RU",
+    "ja": "ja-JP",
+    "ko": "ko-KR",
+    "zh": "zh-CN",
+    "ar": "ar-SA",
+}
+
+
+def _cloud_translate_bridge(text: str, source_lang: str, target_lang: str) -> Optional[str]:
     """
-    Demo fallback: returns the original text with a marker indicating
-    the model is not loaded.
+    High-quality lightweight translation bridge for cloud environments with memory constraints (<512MB RAM).
+    Multi-tier cascade:
+      1. Google GTX engine with Chrome User-Agent (instant, robust across all 100+ languages)
+      2. deep-translator GoogleTranslator
+      3. deep-translator MyMemoryTranslator
     """
+    clean_text = text.strip()
+    if not clean_text:
+        return ""
+
+    sl = source_lang if source_lang and source_lang != "auto" else "auto"
+    tl = target_lang
+
+    # 1. High-speed Google GTX engine with browser user agent
+    try:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:
+        pass
+
+    try:
+        import requests
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+        }
+        params = {
+            "client": "gtx",
+            "sl": sl,
+            "tl": tl,
+            "dt": "t",
+            "q": clean_text,
+        }
+        resp = requests.get(
+            "https://translate.googleapis.com/translate_a/single",
+            params=params,
+            headers=headers,
+            timeout=6.0,
+            verify=False,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                translated_segments = "".join(seg[0] for seg in data[0] if seg and seg[0])
+                if translated_segments.strip():
+                    return translated_segments.strip()
+    except Exception as e:
+        logger.debug("Google GTX translation attempt skipped: %s", e)
+
+    # 2. Try deep-translator GoogleTranslator
+    try:
+        from deep_translator import GoogleTranslator
+        res = GoogleTranslator(source=sl, target=tl).translate(clean_text)
+        if res and res.strip():
+            return res.strip()
+    except Exception as e:
+        logger.debug("GoogleTranslator attempt skipped: %s", e)
+
+    # 3. Try MyMemoryTranslator
+    try:
+        from deep_translator import MyMemoryTranslator
+        src_mm = _MYMEMORY_LANG_MAP.get(source_lang, f"{source_lang}-US" if len(source_lang) == 2 else source_lang)
+        tgt_mm = _MYMEMORY_LANG_MAP.get(target_lang, f"{target_lang}-IN" if target_lang in ("hi", "pa", "bn", "ta", "te", "mr", "gu") else f"{target_lang}-US")
+        res = MyMemoryTranslator(source=src_mm, target=tgt_mm).translate(clean_text)
+        if res and res.strip():
+            return res.strip()
+    except Exception as e:
+        logger.debug("MyMemoryTranslator attempt skipped: %s", e)
+
+    return None
+
+
+def _fallback_translate(
+    text: str,
+    source_lang: str,
+    target_lang: str,
+    tone: Optional[str] = None,
+) -> dict:
+    """
+    Lightweight translation bridge: attempts deep-translator cloud APIs first.
+    If unavailable or offline, applies conversational mapping or dictionary marker.
+    """
+    # 1. Attempt lightweight cloud translation bridge
+    cloud_result = _cloud_translate_bridge(text, source_lang, target_lang)
+    if cloud_result:
+        modulated = apply_tone_modulation(cloud_result, target_lang, tone)
+        alternatives: list[str] = []
+        try:
+            alt_tone = "formal" if tone == "casual" else "casual"
+            alt_res = apply_tone_modulation(cloud_result, target_lang, alt_tone)
+            if alt_res and alt_res != modulated:
+                alternatives.append(alt_res)
+        except Exception:
+            pass
+
+        return {
+            "translated_text": modulated,
+            "source_lang": source_lang,
+            "target_lang": target_lang,
+            "alternatives": alternatives,
+            "is_fallback": False,
+        }
+
+    # 2. Offline fallback: check conversational map
+    clean_low = text.strip().lower()
+    conv_key = (clean_low, source_lang, target_lang)
+    stripped_key = (clean_low.rstrip(".!?,; "), source_lang, target_lang)
+    matched_conv = _CONVERSATIONAL_MAP.get(conv_key) or _CONVERSATIONAL_MAP.get(stripped_key)
+    if matched_conv:
+        modulated = apply_tone_modulation(matched_conv, target_lang, tone)
+        return {
+            "translated_text": modulated,
+            "source_lang": source_lang,
+            "target_lang": target_lang,
+            "alternatives": [],
+            "is_fallback": False,
+        }
+
+    # 3. Labelled fallback if completely unreachable
     src_name = get_language(source_lang)
     tgt_name = get_language(target_lang)
     src_label = src_name.name if src_name else source_lang

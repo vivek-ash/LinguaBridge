@@ -5,6 +5,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://linguabridge-api.onrender.com/api/$1" },
+    { "source": "/health", "destination": "https://linguabridge-api.onrender.com/health" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
