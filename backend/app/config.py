@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     WHISPER_MODEL: str = "medium"
     USE_GPU: Literal["auto", "cpu", "cuda"] = "auto"
     LORA_ADAPTER_PATH: str = ""
-    PRELOAD_MODELS: bool = True
+    PRELOAD_MODELS: bool = False
 
     # File handling
     MAX_UPLOAD_SIZE_MB: int = 100

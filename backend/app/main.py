@@ -44,13 +44,17 @@ async def lifespan(application: FastAPI):
     )
 
     # Preload and warm up all models on startup if configured (local workstation mode)
-    if settings.PRELOAD_MODELS:
+    import os
+    is_cloud = bool(os.environ.get("RENDER") or os.environ.get("PORT"))
+    should_preload = settings.PRELOAD_MODELS and not is_cloud
+
+    if should_preload:
         logger.info("⚡ Pre-loading and warming up ML models for instant translation …")
         import asyncio
         await asyncio.to_thread(model_manager.preload_all)
         logger.info("🚀 LinguaBridge is ready! All models loaded and warmed up in memory.")
     else:
-        logger.info("ℹ️ PRELOAD_MODELS is False – running in cloud-light mode.")
+        logger.info("ℹ️ Running in cloud-light mode (is_cloud=%s, PRELOAD_MODELS=%s) – ready for requests.", is_cloud, settings.PRELOAD_MODELS)
     yield
 
     # Shutdown
