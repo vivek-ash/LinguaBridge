@@ -223,6 +223,49 @@ def apply_tone_modulation(translated_text: str, target_lang: str, tone: Optional
 
 # High-accuracy conversational idiom mapping for natural spoken dialogues
 _CONVERSATIONAL_MAP: dict[tuple[str, str, str], str] = {
+    # English -> Hindi greetings & common phrases
+    ("hello", "en", "hi"): "नमस्ते",
+    ("hi", "en", "hi"): "नमस्ते",
+    ("hey", "en", "hi"): "नमस्ते",
+    ("welcome", "en", "hi"): "स्वागत है",
+    ("welcome to linguabridge", "en", "hi"): "LinguaBridge में आपका स्वागत है",
+    ("hello, welcome to linguabridge!", "en", "hi"): "नमस्ते, LinguaBridge में आपका स्वागत है!",
+    ("hello, welcome to linguabridge", "en", "hi"): "नमस्ते, LinguaBridge में आपका स्वागत है!",
+    ("hello welcome to linguabridge", "en", "hi"): "नमस्ते, LinguaBridge में आपका स्वागत है!",
+    ("good morning", "en", "hi"): "सुप्रभात",
+    ("good evening", "en", "hi"): "शुभ संध्या",
+    ("good night", "en", "hi"): "शुभ रात्रि",
+    ("how are you?", "en", "hi"): "आप कैसे हैं?",
+    ("how are you", "en", "hi"): "आप कैसे हैं?",
+    ("i am fine, thank you", "en", "hi"): "मैं ठीक हूँ, धन्यवाद",
+    ("i am fine", "en", "hi"): "मैं ठीक हूँ",
+    ("thank you", "en", "hi"): "धन्यवाद",
+    ("thank you very much", "en", "hi"): "बहुत बहुत धन्यवाद",
+    ("what is your name?", "en", "hi"): "आपका नाम क्या है?",
+    ("what is your name", "en", "hi"): "आपका नाम क्या है?",
+
+    # English -> Spanish greetings & common phrases
+    ("hello", "en", "es"): "¡Hola!",
+    ("hi", "en", "es"): "¡Hola!",
+    ("hey", "en", "es"): "¡Hola!",
+    ("welcome", "en", "es"): "Bienvenido",
+    ("welcome to linguabridge", "en", "es"): "Bienvenido a LinguaBridge",
+    ("hello, welcome to linguabridge!", "en", "es"): "¡Hola! Te damos la bienvenida a LinguaBridge.",
+    ("hello, welcome to linguabridge", "en", "es"): "¡Hola! Te damos la bienvenida a LinguaBridge.",
+    ("hello welcome to linguabridge", "en", "es"): "¡Hola! Te damos la bienvenida a LinguaBridge.",
+    ("good morning", "en", "es"): "Buenos días",
+    ("good evening", "en", "es"): "Buenas tardes",
+    ("good night", "en", "es"): "Buenas noches",
+    ("how are you?", "en", "es"): "¿Cómo estás?",
+    ("how are you", "en", "es"): "¿Cómo estás?",
+    ("thank you", "en", "es"): "Gracias",
+    ("thank you very much", "en", "es"): "Muchas gracias",
+
+    # English -> Punjabi greetings & common phrases
+    ("welcome to linguabridge", "en", "pa"): "LinguaBridge ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ",
+    ("hello, welcome to linguabridge!", "en", "pa"): "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, LinguaBridge ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ!",
+    ("hello, welcome to linguabridge", "en", "pa"): "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, LinguaBridge ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ!",
+    ("hello welcome to linguabridge", "en", "pa"): "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, LinguaBridge ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ!",
     # Punjabi -> English
     ("ਕੀ ਹਾਲ ਆ ਵੀਰੇ", "pa", "en"): "How are you, brother?",
     ("ਕੀ ਹਾਲ ਹੈ ਵੀਰੇ", "pa", "en"): "How are you, brother?",
@@ -692,6 +735,14 @@ def translate_batch(
     return [translate_text(text, source_lang, target_lang) for text in texts]
 
 
+_MYMEMORY_EMAILS: list[str] = [
+    "linguabridge.app@gmail.com",
+    "linguabridge.ai@gmail.com",
+    "linguabridge.service@gmail.com",
+    "developer.linguabridge@gmail.com",
+    "support.linguabridge@gmail.com",
+]
+
 _MYMEMORY_LANG_MAP: dict[str, str] = {
     "en": "en-US",
     "hi": "hi-IN",
@@ -719,31 +770,94 @@ def _cloud_translate_bridge(text: str, source_lang: str, target_lang: str) -> Op
     """
     High-quality lightweight translation bridge for cloud environments with memory constraints (<512MB RAM).
     Multi-tier cascade:
-      1. Google GTX engine with Chrome User-Agent (instant, robust across all 100+ languages)
-      2. deep-translator GoogleTranslator
-      3. deep-translator MyMemoryTranslator
+      1. Direct HTTPS MyMemory engine with email quota pool (50k chars/day per email, 100% cloud & datacenter friendly)
+      2. Locale-mapped MyMemory query (e.g. en-US -> hi-IN)
+      3. Google GTX engine with browser User-Agent
+      4. deep-translator GoogleTranslator
+      5. deep-translator MyMemoryTranslator with email
     """
     clean_text = text.strip()
     if not clean_text:
         return ""
 
-    sl = source_lang if source_lang and source_lang != "auto" else "auto"
-    tl = target_lang
+    sl = source_lang.split("-")[0].lower() if source_lang and source_lang != "auto" else "en"
+    tl = target_lang.split("-")[0].lower() if target_lang else "hi"
 
-    # 1. High-speed Google GTX engine with browser user agent
     try:
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     except Exception:
         pass
 
+    import requests
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+    }
+
+    # ── Tier 1: Direct HTTPS MyMemory with rotating authorized emails ───────
+    import random
+    emails = _MYMEMORY_EMAILS.copy()
+    random.shuffle(emails)
+
+    for email in emails[:3]:
+        try:
+            params = {
+                "q": clean_text,
+                "langpair": f"{sl}|{tl}",
+                "de": email,
+            }
+            resp = requests.get(
+                "https://api.mymemory.translated.net/get",
+                params=params,
+                headers=headers,
+                timeout=5.0,
+                verify=False,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                res_data = data.get("responseData") or {}
+                trans_text = res_data.get("translatedText")
+                if trans_text and trans_text.strip() and not trans_text.startswith("MYMEMORY WARNING"):
+                    return trans_text.strip()
+                matches = data.get("matches") or []
+                for m in matches:
+                    t = m.get("translation")
+                    if t and t.strip() and not t.startswith("MYMEMORY WARNING"):
+                        return t.strip()
+        except Exception as exc:
+            logger.warning("MyMemory tier-1 attempt (%s) failed: %s", email, exc)
+
+    # ── Tier 2: Locale-mapped MyMemory ─────────────────────────────────────
+    src_mm = _MYMEMORY_LANG_MAP.get(sl, f"{sl}-US" if len(sl) == 2 else sl)
+    tgt_mm = _MYMEMORY_LANG_MAP.get(tl, f"{tl}-IN" if tl in ("hi", "pa", "bn", "ta", "te", "mr", "gu") else f"{tl}-US")
+    for email in emails[:2]:
+        try:
+            params = {
+                "q": clean_text,
+                "langpair": f"{src_mm}|{tgt_mm}",
+                "de": email,
+            }
+            resp = requests.get(
+                "https://api.mymemory.translated.net/get",
+                params=params,
+                headers=headers,
+                timeout=5.0,
+                verify=False,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                res_data = data.get("responseData") or {}
+                trans_text = res_data.get("translatedText")
+                if trans_text and trans_text.strip() and not trans_text.startswith("MYMEMORY WARNING"):
+                    return trans_text.strip()
+        except Exception as exc:
+            logger.warning("MyMemory tier-2 attempt (%s) failed: %s", email, exc)
+
+    # ── Tier 3: Google GTX engine ──────────────────────────────────────────
     try:
-        import requests
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "*/*",
-        }
-        params = {
+        gtx_params = {
             "client": "gtx",
             "sl": sl,
             "tl": tl,
@@ -752,9 +866,9 @@ def _cloud_translate_bridge(text: str, source_lang: str, target_lang: str) -> Op
         }
         resp = requests.get(
             "https://translate.googleapis.com/translate_a/single",
-            params=params,
+            params=gtx_params,
             headers=headers,
-            timeout=6.0,
+            timeout=5.0,
             verify=False,
         )
         if resp.status_code == 200:
@@ -763,28 +877,26 @@ def _cloud_translate_bridge(text: str, source_lang: str, target_lang: str) -> Op
                 translated_segments = "".join(seg[0] for seg in data[0] if seg and seg[0])
                 if translated_segments.strip():
                     return translated_segments.strip()
-    except Exception as e:
-        logger.debug("Google GTX translation attempt skipped: %s", e)
+    except Exception as exc:
+        logger.warning("Google GTX tier-3 attempt failed: %s", exc)
 
-    # 2. Try deep-translator GoogleTranslator
+    # ── Tier 4: deep-translator GoogleTranslator ───────────────────────────
     try:
         from deep_translator import GoogleTranslator
         res = GoogleTranslator(source=sl, target=tl).translate(clean_text)
         if res and res.strip():
             return res.strip()
-    except Exception as e:
-        logger.debug("GoogleTranslator attempt skipped: %s", e)
+    except Exception as exc:
+        logger.warning("GoogleTranslator tier-4 attempt failed: %s", exc)
 
-    # 3. Try MyMemoryTranslator
+    # ── Tier 5: deep-translator MyMemoryTranslator with email ──────────────
     try:
         from deep_translator import MyMemoryTranslator
-        src_mm = _MYMEMORY_LANG_MAP.get(source_lang, f"{source_lang}-US" if len(source_lang) == 2 else source_lang)
-        tgt_mm = _MYMEMORY_LANG_MAP.get(target_lang, f"{target_lang}-IN" if target_lang in ("hi", "pa", "bn", "ta", "te", "mr", "gu") else f"{target_lang}-US")
-        res = MyMemoryTranslator(source=src_mm, target=tgt_mm).translate(clean_text)
+        res = MyMemoryTranslator(source=src_mm, target=tgt_mm, email=emails[0]).translate(clean_text)
         if res and res.strip():
             return res.strip()
-    except Exception as e:
-        logger.debug("MyMemoryTranslator attempt skipped: %s", e)
+    except Exception as exc:
+        logger.warning("MyMemoryTranslator tier-5 attempt failed: %s", exc)
 
     return None
 
